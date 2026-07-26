@@ -59,6 +59,22 @@ python -m auria.main
 Then `@mention` the bot in a channel, or DM it. The fleet posts proactive
 monitoring alerts to `SLACK_ALERT_CHANNEL`.
 
+## Deploy it permanently
+
+To run the fleet always-on as a systemd service on your own Linux server
+(auto-restart, survives reboots), see [`deploy/DEPLOY.md`](deploy/DEPLOY.md).
+In short:
+
+```bash
+sudo bash deploy/install.sh     # installs Node + Claude CLI + venv + service
+nano .env                       # add ANTHROPIC_API_KEY + Slack tokens
+sudo systemctl start auria-fleet
+journalctl -u auria-fleet -f
+```
+
+The Slack app is created in ~4 clicks from
+[`deploy/slack-app-manifest.yaml`](deploy/slack-app-manifest.yaml).
+
 ## Tests
 
 ```bash

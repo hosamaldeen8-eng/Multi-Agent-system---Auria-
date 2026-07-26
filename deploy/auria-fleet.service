@@ -1,0 +1,33 @@
+# Reference systemd unit for the Auria fleet.
+# `deploy/install.sh` writes a copy of this to /etc/systemd/system/ with the
+# real paths and user filled in. This file is kept in the repo for visibility;
+# you normally don't edit it by hand — run install.sh instead.
+#
+# Placeholders install.sh substitutes:
+#   __APP_DIR__   absolute path to the repo checkout
+#   __PYTHON__    absolute path to the venv's python (__APP_DIR__/.venv/bin/python)
+#   __RUN_USER__  the OS user the service runs as
+
+[Unit]
+Description=Auria Multi-Agent Fleet
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__RUN_USER__
+WorkingDirectory=__APP_DIR__
+EnvironmentFile=__APP_DIR__/.env
+ExecStart=__PYTHON__ -m auria.main
+Restart=always
+RestartSec=5
+# SIGINT lets Python raise KeyboardInterrupt so the app shuts down cleanly.
+KillSignal=SIGINT
+TimeoutStopSec=30
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
