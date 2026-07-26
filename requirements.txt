@@ -11,9 +11,10 @@ slack-sdk>=3.31.0
 # Config loading
 python-dotenv>=1.0.0
 
-# Hosted unified memory (optional): set AURIA_DB_URL to a postgresql:// URL
-# (e.g. Supabase) to use Postgres instead of the local SQLite file.
-psycopg[binary]>=3.1
+# Hosted unified memory (OPTIONAL — only if you set AURIA_DB_URL to a Supabase/
+# Postgres URL). Local runs use SQLite and don't need this. Install separately:
+#     pip install "psycopg[binary]>=3.1"
+# (kept out of the base install so a fresh setup never blocks on a compiled wheel.)
 
 # NOTE: the Odoo tools use xmlrpc.client from the Python standard library —
 # no extra dependency required.
