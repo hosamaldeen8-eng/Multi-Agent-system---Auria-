@@ -81,6 +81,21 @@ ODOO_API_KEY=...
 > (e.g. `C0XXXXXXXXX`) is at the bottom. Invite the bot to that channel, or rely
 > on the `chat:write.public` scope for public channels.
 
+## 5b. (Recommended) Use the hosted Supabase memory
+
+The fleet's unified memory can live in the **Supabase `auria` project** instead
+of a local SQLite file, so the fleet's brain is durable, backed up, and shared
+across restarts/hosts. The `auria` schema and tables are **already provisioned**.
+
+Get the database password from Supabase → **Project Settings → Database →
+Connection string** (or **Reset database password**), then set in `.env`:
+
+```ini
+AURIA_DB_URL=postgresql://postgres:YOUR_DB_PASSWORD@db.lxuuapitmxjwbbmsrehj.supabase.co:5432/postgres
+```
+
+Leave `AURIA_DB_URL` unset to keep the local SQLite file instead.
+
 ## 6. Start it
 
 ```bash

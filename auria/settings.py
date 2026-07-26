@@ -23,7 +23,9 @@ class Settings:
     reviewer_model: str = field(default_factory=lambda: _env("AURIA_REVIEWER_MODEL", "opus"))
     effort: str = field(default_factory=lambda: _env("AURIA_EFFORT", "high"))
 
-    # Memory
+    # Memory. If AURIA_DB_URL (postgresql://...) is set, the fleet uses the
+    # hosted Postgres/Supabase store; otherwise it falls back to the SQLite file.
+    db_url: str = field(default_factory=lambda: _env("AURIA_DB_URL"))
     db_path: str = field(default_factory=lambda: _env("AURIA_DB_PATH", "./data/auria_memory.db"))
 
     # Slack

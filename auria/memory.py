@@ -187,3 +187,18 @@ class Memory:
     def close(self) -> None:
         with self._lock:
             self._conn.close()
+
+
+def open_memory():
+    """Return the shared store, picking Postgres/Supabase when configured.
+
+    Uses ``PostgresMemory`` when ``AURIA_DB_URL`` is set (hosted, durable,
+    shared), otherwise the local SQLite ``Memory`` (zero-config default).
+    """
+    from .settings import settings
+
+    if settings.db_url:
+        from .pg_memory import PostgresMemory
+
+        return PostgresMemory(settings.db_url)
+    return Memory(settings.db_path)

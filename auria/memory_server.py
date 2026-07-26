@@ -18,7 +18,7 @@ from .memory import Memory
 
 
 def _text(payload: Any) -> dict[str, Any]:
-    return {"content": [{"type": "text", "text": json.dumps(payload, ensure_ascii=False, indent=2)}]}
+    return {"content": [{"type": "text", "text": json.dumps(payload, ensure_ascii=False, indent=2, default=str)}]}
 
 
 def build_memory_server(memory: Memory):

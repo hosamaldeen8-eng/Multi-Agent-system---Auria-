@@ -16,7 +16,7 @@ import logging
 import sys
 
 from .loops import MonitorLoop
-from .memory import Memory
+from .memory import open_memory
 from .orchestrator import Orchestrator
 from .settings import settings
 
@@ -28,7 +28,7 @@ log = logging.getLogger("auria")
 
 
 async def run_once(prompt: str) -> None:
-    memory = Memory(settings.db_path)
+    memory = open_memory()
     orchestrator = Orchestrator(memory)
     try:
         print(await orchestrator.handle(prompt, session_id="cli"))
@@ -48,7 +48,7 @@ async def run_service() -> None:
     from .slack_bridge import SlackBridge  # imported lazily so --once needs no slack deps
 
     settings.ensure_data_dir()
-    memory = Memory(settings.db_path)
+    memory = open_memory()
     orchestrator = Orchestrator(memory)
     await orchestrator.connect()
 
