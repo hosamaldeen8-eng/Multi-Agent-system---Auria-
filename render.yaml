@@ -1,0 +1,33 @@
+# Render blueprint — deploys the fleet as an always-on Background Worker.
+# In Render: New + -> Blueprint -> connect this repo. Render reads this file,
+# builds the Dockerfile, and runs it. Set the `sync: false` secrets in the
+# dashboard (never in the repo).
+services:
+  - type: worker            # Background Worker = long-lived process, no public port
+    name: auria-fleet
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    autoDeploy: true
+    branch: claude/multi-agent-orchestrator-8127yz
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false          # paste in dashboard
+      - key: SLACK_BOT_TOKEN
+        sync: false
+      - key: SLACK_APP_TOKEN
+        sync: false
+      - key: AURIA_DB_URL
+        sync: false          # postgresql://...supabase...  (or leave blank for SQLite)
+      - key: SLACK_ALERT_CHANNEL
+        value: C0BKTJWUL9K
+      - key: AURIA_ORCHESTRATOR_MODEL
+        value: claude-opus-4-8
+      - key: AURIA_WORKER_MODEL
+        value: sonnet
+      - key: AURIA_REVIEWER_MODEL
+        value: opus
+      - key: AURIA_EFFORT
+        value: medium
+      - key: AURIA_LOOP_INTERVAL_SECONDS
+        value: "3600"

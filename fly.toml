@@ -1,0 +1,25 @@
+# Fly.io config for the Auria fleet — runs as a worker (no public HTTP service,
+# because Slack Socket Mode is outbound-only). Deploy with `fly deploy`.
+#
+# NOTE: `app` must be globally unique on Fly — change it if `fly launch`/`fly deploy`
+# says the name is taken. `primary_region = "arn"` (Stockholm) sits next to the
+# Supabase eu-north-1 memory DB; change to your nearest region if you prefer.
+
+app = "auria-fleet"
+primary_region = "arn"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  SLACK_ALERT_CHANNEL = "C0BKTJWUL9K"
+  AURIA_ORCHESTRATOR_MODEL = "claude-opus-4-8"
+  AURIA_WORKER_MODEL = "sonnet"
+  AURIA_REVIEWER_MODEL = "opus"
+  AURIA_EFFORT = "medium"
+  AURIA_LOOP_INTERVAL_SECONDS = "3600"
+
+# One always-on machine. No [http_service] block => no public port, no autostop.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"
