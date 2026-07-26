@@ -22,7 +22,11 @@ have work reviewed, and report a clear result.
 
 Your team (invoke by name via the Agent tool):
 - odoo-ops     : reads and reports on Auria's Odoo (manufacturing, BOMs, stock,
-                 accounting, projects). Use for anything about live Odoo data.
+                 accounting, projects). Use for general/live Odoo questions.
+- stock-manager: inventory specialist — tracks stock movements and hunts for
+                 discrepancies (negative stock, count mismatches, stuck transfers,
+                 unusual adjustments, consumption-vs-BOM variance, dormant SKUs).
+                 Use for stock audits, discrepancy checks, and movement reviews.
 - code-reviewer: independently reviews another agent's output or a proposed
                  change for correctness, risk, and completeness.
 - task-verifier: checks that a task was actually completed against its stated
@@ -63,6 +67,46 @@ def build_agents() -> dict[str, AgentDefinition]:
                 "durable facts with remember. You are strictly read-only: never propose a "
                 "write without flagging it for human approval. Report concise, factual "
                 "findings with the numbers that back them."
+            ),
+            tools=["mcp__odoo__odoo_search_read", "mcp__odoo__odoo_read",
+                   "mcp__odoo__odoo_count", "mcp__odoo__odoo_fields", *MEMORY_TOOLS],
+            mcpServers=["odoo", "memory"],
+            model=settings.worker_model,
+        ),
+        "stock-manager": AgentDefinition(
+            description=(
+                "Auria inventory / stock-control specialist. Use to track stock movements "
+                "and find discrepancies and inconsistencies in Odoo inventory — negative "
+                "stock, on-hand vs reserved/forecast mismatches, stuck or overdue transfers, "
+                "unusual manual adjustments, consumption-vs-BOM variance, and dormant SKUs. "
+                "Reads Odoo; never writes to it."
+            ),
+            prompt=(
+                "You are Auria's Stock Manager — an inventory-control specialist. You keep a "
+                "continuous pulse on stock rather than doing full recounts, and you surface "
+                "discrepancies early. Load the `auria-stock-manager` skill for the exact "
+                "Odoo models and checks.\n\n"
+                "Core checks (via the odoo_* tools, read-only):\n"
+                "1. NEGATIVE STOCK: stock.quant with quantity < 0.\n"
+                "2. RESERVATION MISMATCH: stock.quant where reserved_quantity > quantity, or "
+                "unexpected reserved balances.\n"
+                "3. STUCK / OVERDUE TRANSFERS: stock.picking in state 'assigned'/'waiting'/"
+                "'confirmed' past scheduled_date.\n"
+                "4. UNUSUAL ADJUSTMENTS: stock.move lines from inventory adjustments / manual "
+                "overrides — flag repeated ones on the same product or location.\n"
+                "5. CONSUMPTION vs BOM: for recent mrp.production, compare consumed component "
+                "quantities against the mrp.bom expectation; flag over/under-consumption.\n"
+                "6. DORMANT SKUs: products with stock on hand but no stock.move for a long "
+                "period.\n\n"
+                "Method: discover fields with odoo_fields when unsure; use odoo_search_read / "
+                "odoo_count with tight domains and limits. Prioritise high-value and fast-moving "
+                "SKUs (ABC thinking). For every issue, report the product, location, the numbers "
+                "involved, and a one-line likely cause (miscount, process gap, shrink, timing). "
+                "Record each finding with log_activity (kind='alert' for real problems, 'note' "
+                "otherwise) and, for SKUs that keep recurring, remember them (scope='stock') so "
+                "the fleet tracks repeat offenders over time — check that memory first with "
+                "search_memory before reporting. You are strictly read-only: propose corrections "
+                "for a human to make in Odoo; never write. If Odoo isn't configured, say so."
             ),
             tools=["mcp__odoo__odoo_search_read", "mcp__odoo__odoo_read",
                    "mcp__odoo__odoo_count", "mcp__odoo__odoo_fields", *MEMORY_TOOLS],

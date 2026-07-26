@@ -30,6 +30,16 @@ MONITORS: list[dict[str, str]] = [
             "reply with exactly 'ALL CLEAR' and nothing else."
         ),
     },
+    {
+        "name": "stock-discrepancy-scan",
+        "prompt": (
+            "Use the stock-manager agent to run a stock discrepancy scan on Odoo: "
+            "negative stock, reservation mismatches, overdue transfers, and unusual "
+            "manual adjustments. Report only genuine discrepancies, prioritised by value, "
+            "each with product, location, numbers, and likely cause. Track repeat offenders "
+            "in memory. If nothing is wrong, reply with exactly 'ALL CLEAR' and nothing else."
+        ),
+    },
 ]
 
 
