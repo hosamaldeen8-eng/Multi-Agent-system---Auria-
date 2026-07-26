@@ -55,11 +55,13 @@ class SlackBridge:
         thread_ts = event.get("thread_ts") or event.get("ts")
         channel = event.get("channel")
         user = event.get("user", "someone")
+        log.info("MENTION-RECEIVED channel=%s user=%s text=%r", channel, user, text[:120])
         await say(text=":gear: Working on it…", thread_ts=thread_ts)
         try:
             reply = await self.orchestrator.handle(
                 f"[Slack message from {user}] {text}", session_id=f"slack:{channel}"
             )
+            log.info("MENTION-REPLIED channel=%s chars=%d", channel, len(reply))
         except Exception as exc:  # noqa: BLE001 - always report failures to the user
             log.exception("orchestrator failed")
             reply = f":warning: The fleet hit an error: `{type(exc).__name__}: {exc}`"
