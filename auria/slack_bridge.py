@@ -52,11 +52,13 @@ class SlackBridge:
         text = _clean(event.get("text", ""), self._bot_user_id)
         if not text:
             return
-        thread_ts = event.get("thread_ts") or event.get("ts")
+        # Reply in the channel, not as a thread — unless the user mentioned us
+        # from inside an existing thread, in which case stay in that thread.
+        reply_thread = event.get("thread_ts")  # None for a top-level mention
         channel = event.get("channel")
         user = event.get("user", "someone")
         log.info("MENTION-RECEIVED channel=%s user=%s text=%r", channel, user, text[:120])
-        await say(text=":gear: Working on it…", thread_ts=thread_ts)
+        await say(text=":gear: Working on it…", thread_ts=reply_thread)
         try:
             reply = await self.orchestrator.handle(
                 f"[Slack message from {user}] {text}", session_id=f"slack:{channel}"
@@ -65,7 +67,7 @@ class SlackBridge:
         except Exception as exc:  # noqa: BLE001 - always report failures to the user
             log.exception("orchestrator failed")
             reply = f":warning: The fleet hit an error: `{type(exc).__name__}: {exc}`"
-        await say(text=reply[:39000], thread_ts=thread_ts)
+        await say(text=reply[:39000], thread_ts=reply_thread)
 
     async def post_alert(self, text: str, channel: str | None = None) -> None:
         """Post a proactive monitoring alert to the alert channel."""
