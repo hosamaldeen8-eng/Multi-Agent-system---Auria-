@@ -39,8 +39,11 @@ Python venv with the dependencies, writes and **enables** the
 ## 3. Create the Slack app (one time, ~4 clicks)
 
 1. Go to <https://api.slack.com/apps> → **Create New App** → **From a manifest**.
-2. Pick your workspace, then paste the contents of
-   [`deploy/slack-app-manifest.yaml`](slack-app-manifest.yaml). Create the app.
+2. Pick your workspace. The importer defaults to the **JSON** tab — paste
+   [`deploy/slack-app-manifest.json`](slack-app-manifest.json) there (or switch
+   to the **YAML** tab and paste [`slack-app-manifest.yaml`](slack-app-manifest.yaml)).
+   Both are comment-free; pasting commented YAML into the JSON tab is what causes
+   *"We can't translate a manifest with errors."* Create the app.
 3. **OAuth & Permissions** → **Install to Workspace** → authorize. Copy the
    **Bot User OAuth Token** — it starts with `xoxb-`.
 4. **Basic Information** → **App-Level Tokens** → **Generate Token and Scopes** →
