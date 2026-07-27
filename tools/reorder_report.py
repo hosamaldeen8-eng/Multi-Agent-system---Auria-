@@ -356,15 +356,46 @@ def render_html(rows: list[MaterialRow], *, live: bool) -> str:
 </html>"""
 
 
-def main() -> None:
-    out = sys.argv[1] if len(sys.argv) > 1 else "reorder_report.html"
+def build_report(html_path: str | None = "reorder_report.html"):
+    """Compute the reorder rows (live Odoo if configured, else sample) and,
+    if html_path is given, also write the HTML dashboard. Returns (rows, live)."""
     data = fetch_from_odoo()
     live = data is not None
     if not live:
         data = sample_data()
     rows = compute_rows(*data)
-    with open(out, "w", encoding="utf-8") as f:
-        f.write(render_html(rows, live=live))
+    if html_path:
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(render_html(rows, live=live))
+    return rows, live
+
+
+def slack_summary(rows: list[MaterialRow], live: bool) -> str:
+    """Compact Slack-markdown summary of the reorder situation."""
+    reorder = [r for r in rows if r.status == "REORDER"]
+    low = [r for r in rows if r.status == "LOW"]
+    tag = "LIVE — Odoo" if live else "SAMPLE data (Odoo not connected)"
+    lines = [
+        f":clipboard: *Daily material reorder report* — _{tag}_",
+        f"{len(rows)} materials · *{len(reorder)} to reorder* · {len(low)} running low",
+    ]
+    if reorder:
+        lines.append("\n*Reorder now:*")
+        for r in reorder:
+            lines.append(
+                f"• *{r.name}* — on hand {_fmt(r.on_hand)} ≤ reorder point "
+                f"{_fmt(r.reorder_point)} {r.uom} → order *{_fmt(r.suggested_order)}* {r.uom}"
+            )
+    if low:
+        lines.append("\n*Running low:* " + ", ".join(r.name for r in low))
+    if not reorder and not low:
+        lines.append("\n:white_check_mark: All materials are above their reorder point.")
+    return "\n".join(lines)
+
+
+def main() -> None:
+    out = sys.argv[1] if len(sys.argv) > 1 else "reorder_report.html"
+    rows, live = build_report(out)
     reorder = sum(1 for r in rows if r.status == "REORDER")
     print(f"Wrote {out} — {len(rows)} materials, {reorder} to reorder "
           f"({'LIVE Odoo' if live else 'SAMPLE data'}).")

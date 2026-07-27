@@ -44,6 +44,11 @@ class Settings:
         default_factory=lambda: int(_env("AURIA_LOOP_INTERVAL_SECONDS", "3600") or "0")
     )
 
+    # Daily scheduled reports. Local wall-clock time "HH:MM" (empty disables).
+    reorder_report_time: str = field(
+        default_factory=lambda: _env("AURIA_REORDER_REPORT_TIME", "18:00")
+    )
+
     @property
     def slack_enabled(self) -> bool:
         return bool(self.slack_bot_token and self.slack_app_token)

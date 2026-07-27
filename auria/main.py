@@ -18,6 +18,7 @@ import sys
 from .loops import MonitorLoop
 from .memory import open_memory
 from .orchestrator import Orchestrator
+from .scheduler import DailyTask
 from .settings import settings
 
 logging.basicConfig(
@@ -56,13 +57,32 @@ async def run_service() -> None:
     loop = MonitorLoop(orchestrator, bridge.post_alert)
     loop.start()
 
+    reorder_job = _build_reorder_job(bridge)
+    reorder_task = DailyTask("reorder-report", settings.reorder_report_time, reorder_job)
+    reorder_task.start()
+
     log.info("Auria fleet online. Orchestrator=%s, Odoo=%s", settings.orchestrator_model, settings.odoo_enabled)
     try:
         await bridge.start()  # blocks, serving Slack events
     finally:
+        await reorder_task.stop()
         await loop.stop()
         await orchestrator.close()
         memory.close()
+
+
+def _build_reorder_job(bridge):
+    """Return an async callback that builds the reorder report and posts the
+    summary to Slack. Pure-Python compute (no LLM/token cost)."""
+    async def _run() -> None:
+        from tools.reorder_report import build_report, slack_summary
+
+        log.info("Running daily reorder report…")
+        rows, live = await asyncio.to_thread(build_report, "reorder_report.html")
+        await bridge.post_alert(slack_summary(rows, live))
+        log.info("Reorder report posted (%d materials, live=%s)", len(rows), live)
+
+    return _run
 
 
 def main() -> None:
