@@ -31,6 +31,7 @@ ap.add_argument("--jar-d", type=float, default=85.0, help="jar body diameter")
 ap.add_argument("--jar-len", type=float, default=115.0, help="jar length incl. lid")
 ap.add_argument("--lid-d", type=float, default=88.0, help="lid outer diameter")
 ap.add_argument("--lid-h", type=float, default=30.0, help="lid height")
+ap.add_argument("--label-len", type=float, default=220.0, help="label length around the jar")
 ap.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "out"))
 A = ap.parse_args()
 
@@ -167,12 +168,6 @@ def ref_blade():
     return tilt(box(BLADE_X0, BLADE_X1, -1.5, 1.5, AX_H + REF_JAR_R, H_Z0 + 12))
 
 
-def ref_label():
-    """Label pinned under the clamp foot, tail hanging towards the operator."""
-    lab = box(A.lid_h + 8, A.jar_len - 10, -7, 90, AX_H + jar_r + 0.2, AX_H + jar_r + 0.6)
-    return about_spindle(lab, CLAMP_REST_DEG)
-
-
 # name -> (shape, colour, printed?, Arabic label)
 PARTS = {
     "base": (make_base(), "#8f9aa3", True, "القاعدة وأعمدة الذراع"),
@@ -186,7 +181,6 @@ PARTS = {
     "ref_lid": (cyl_x(A.lid_d, 0.3, A.lid_h), "#d8b04a", False, "غطاء العبوة"),
     "ref_jar": (cyl_x(A.jar_d, A.lid_h, A.jar_len), "#2e5e45", False, "العبوة"),
     "ref_bolt": (cyl_x(8, -68, -0.5), "#b9bec4", False, "برغي M8"),
-    "ref_label": (ref_label(), "#ffffff", False, "الاستيكر"),
 }
 
 os.makedirs(A.out, exist_ok=True)
@@ -218,7 +212,9 @@ print("clashes:", clashes or "none")
 for f in os.listdir(A.out):
     os.remove(os.path.join(A.out, f))
 asm = cq.Assembly(name="label_applicator")
-viewer = {"params": vars(A) | {"axis_h": AX_H, "clamp_rest_deg": CLAMP_REST_DEG}, "parts": []}
+viewer = {"params": vars(A) | {"axis_h": AX_H, "clamp_rest_deg": CLAMP_REST_DEG, "clamp_pin": [5, ad_r + 6],
+                               "arm_pivot": [ARM_PIVOT_Y, ARM_PIVOT_Z],
+                               "label_len": min(A.label_len, 0.85 * math.pi * A.jar_d)}, "parts": []}
 for name, (shape, colour, is_printed, label) in PARTS.items():
     if is_printed:
         cq.exporters.export(shape, os.path.join(A.out, f"{name}.stl"), tolerance=0.05, angularTolerance=0.2)

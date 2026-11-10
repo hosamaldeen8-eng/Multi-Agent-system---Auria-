@@ -36,12 +36,13 @@ header{display:flex;flex-direction:column;gap:8px}
 button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:5px 12px;cursor:pointer}
 button:hover{border-color:var(--accent)}
 button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-#spin[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--paper)}
+#spin{min-width:7.5em}
 .legend{display:flex;flex-wrap:wrap;gap:8px;padding:12px 14px;border-top:1px solid var(--line);background:var(--panel)}
 .legend button{display:flex;align-items:center;gap:8px;font-size:.88rem;padding:3px 10px}
 .legend button[aria-pressed=false]{opacity:.45;text-decoration:line-through}
 .chip{width:12px;height:12px;border-radius:2px;border:1px solid var(--line);flex:none}
-.hint{font-size:.85rem;color:var(--muted);padding:8px 14px 0}
+.step{font-weight:500;padding:10px 14px 0;min-height:1.75em}
+.hint{font-size:.85rem;color:var(--muted);padding:2px 14px 0}
 
 ol{margin:0;padding-inline-start:1.4em;display:flex;flex-direction:column;gap:8px;max-width:64ch}
 .scroll{overflow-x:auto}
@@ -61,9 +62,10 @@ th{color:var(--muted);font-weight:500;font-size:.85rem}
   <section>
     <div class="stage">
       <canvas id="view" aria-label="مجسم ثلاثي الأبعاد للمكينة"></canvas>
+      <p class="step" id="step"></p>
       <p class="hint">اسحب باش تدوّر المجسم، وقرّب بالعجلة أو بإصبعين.</p>
       <div class="bar">
-        <button id="spin" type="button" aria-pressed="false">دوّر العبوة</button>
+        <button id="spin" type="button" aria-pressed="true">وقّف العرض</button>
         <label for="explode">فكّ القطع <input id="explode" type="range" min="0" max="1" step="0.01" value="0"></label>
         <label for="refs"><input id="refs" type="checkbox" checked> العبوة والاستيكر</label>
         <button id="reset" type="button">رجّع الزاوية</button>
@@ -144,7 +146,7 @@ DATA.parts.filter(p=>p.printed).forEach(p=>{
 (function(){
   const canvas = document.getElementById("view");
   if (!window.THREE) { const d=document.createElement("p"); d.className="err"; d.textContent="تعذّر تحميل مكتبة العرض ثلاثي الأبعاد. جرّب تعاود فتح الصفحة."; canvas.replaceWith(d); return; }
-  const AX = DATA.params.axis_h;
+  const P = DATA.params, AX = P.axis_h, RAD = Math.PI/180;
   const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
   renderer.setPixelRatio(Math.min(devicePixelRatio||1, 2));
   const scene = new THREE.Scene();
@@ -156,21 +158,68 @@ DATA.parts.filter(p=>p.printed).forEach(p=>{
   // CAD is Z-up; three is Y-up.
   const root = new THREE.Group(); root.rotation.x = -Math.PI/2; scene.add(root);
   const spinG = new THREE.Group(); spinG.position.set(0,0,AX); root.add(spinG);
-  const SPIN = n => n.startsWith("lid_adapter") || n.startsWith("clamp") || ["crank","ref_lid","ref_jar","ref_bolt","ref_label"].includes(n);
-  const EXPL = { base:[0,0,-40], headstock:[-50,0,0], crank:[-110,0,0], ref_bolt:[-80,0,0], ref_lid:[45,0,0], ref_jar:[110,0,0], squeegee_arm:[0,-20,70], ref_blade:[0,-20,35], ref_label:[110,70,25] };
-  const meshes = {};
+  const SPIN = n => n.startsWith("lid_adapter") || ["crank","ref_lid","ref_jar","ref_bolt"].includes(n);
+  const ARM = n => n==="squeegee_arm" || n==="ref_blade";
+  const EXPL = { base:[0,0,-40], headstock:[-50,0,0], crank:[-110,0,0], ref_bolt:[-80,0,0], ref_lid:[45,0,0], ref_jar:[110,0,0], squeegee_arm:[0,-20,70], ref_blade:[0,-20,35] };
+  const meshes = {}; let clampHinge = null; const armHinges = [];
   DATA.parts.forEach(p=>{
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.Float32BufferAttribute(p.v, 3));
     g.setIndex(p.t);
     const flat = g.toNonIndexed(); flat.computeVertexNormals();
-    const isLabel = p.name==="ref_label";
-    const m = new THREE.Mesh(flat, new THREE.MeshStandardMaterial({color:p.color, roughness:.75, metalness:.05,
-      transparent:isLabel, opacity:isLabel?.6:1, side:THREE.DoubleSide}));
-    const holder = new THREE.Group(); holder.add(m);
-    if (SPIN(p.name)) { m.position.set(0,0,-AX); spinG.add(holder); } else root.add(holder);
+    const m = new THREE.Mesh(flat, new THREE.MeshStandardMaterial({color:p.color, roughness:.75, metalness:.05, side:THREE.DoubleSide}));
+    const holder = new THREE.Group();
+    if (p.name.startsWith("clamp")) {
+      // hinge the clamp on its pin so it can open: spindle -> rest angle -> pin
+      const g1 = new THREE.Group(); g1.rotation.x = P.clamp_rest_deg*RAD;
+      clampHinge = new THREE.Group(); clampHinge.position.set(P.clamp_pin[0], 0, P.clamp_pin[1]);
+      holder.add(g1); g1.add(clampHinge); clampHinge.add(m); spinG.add(holder);
+      spinG.updateMatrixWorld(true); root.updateMatrixWorld(true);
+      const inv = new THREE.Matrix4().copy(clampHinge.matrixWorld).invert().multiply(root.matrixWorld);
+      m.matrixAutoUpdate = false; m.matrix.copy(inv);
+    } else if (ARM(p.name)) {
+      const h = new THREE.Group(); h.position.set(0, P.arm_pivot[0], P.arm_pivot[1]);
+      m.position.set(0, -P.arm_pivot[0], -P.arm_pivot[1]); h.add(m); holder.add(h); root.add(holder); armHinges.push(h);
+    } else if (SPIN(p.name)) { m.position.set(0,0,-AX); holder.add(m); spinG.add(holder); }
+    else { holder.add(m); root.add(holder); }
     meshes[p.name] = {holder, part:p};
   });
+
+  // Animated label: a strip that lies flat towards the operator and wraps onto the jar.
+  const N = 72, RL = P.jar_d/2 + 0.5, LLEN = P.label_len, LX0 = P.lid_h + 8, LX1 = P.jar_len - 10;
+  const lpos = new Float32Array((N+1)*6), lidx = [];
+  for (let i=0;i<N;i++){ const a=i*2; lidx.push(a,a+1,a+2, a+1,a+3,a+2); }
+  const lgeo = new THREE.BufferGeometry();
+  lgeo.setAttribute("position", new THREE.BufferAttribute(lpos, 3)); lgeo.setIndex(lidx);
+  const lmat = new THREE.MeshStandardMaterial({color:0xffffff, roughness:.5, transparent:true, opacity:.85, side:THREE.DoubleSide, depthWrite:false});
+  const label = new THREE.Mesh(lgeo, lmat); label.frustumCulled = false; root.add(label);
+  function setLabel(p){   // p = how far the leading edge has travelled past the squeegee line (mm along the surface)
+    for (let i=0;i<=N;i++){ const u = p - LLEN*i/N; let y, z;
+      if (u >= 0){ const f=u/RL; y=-RL*Math.sin(f); z=AX+RL*Math.cos(f); } else { y=-u; z=AX+RL; }
+      lpos.set([LX0,y,z, LX1,y,z], i*6); }
+    lgeo.attributes.position.needsUpdate = true; lgeo.computeVertexNormals(); }
+
+  // One cycle of the demo. Times in seconds.
+  const STEPS = ["١. افتح المشبك ودخّل طرف الاستيكر تحته", "٢. سكّر المشبك ونزّل القومة", "٣. دوّر المانيفيلا: القومة تكبس الاستيكر وتطرد الهواء",
+                 "٤. افتح المشبك قبل ما يوصل للقومة", "٥. كمّل اللفة باش القومة تكبس أول طرف", "٦. الاستيكر ركب. بدّل العبوة وعاود"];
+  const T = [1.6, 2.3, 7.0, 7.6, 8.9, 10.2, 11.0], LEAD0 = 19*RAD, OPEN = -8*RAD, LIFT = 14*RAD;
+  const ease = x => x<.5 ? 2*x*x : 1-Math.pow(-2*x+2,2)/2, seg = (t,a,b) => Math.max(0, Math.min(1, (t-a)/(b-a)));
+  const stepEl = document.getElementById("step"); let lastStep = -1;
+  function pose(t){
+    let open=1, lift=0, alpha=0, op=1, slide=1, step=0;
+    if (t < T[0]) { slide = ease(seg(t,0,T[0])); lift = LIFT; op = seg(t,0,.3); step=0; }
+    else if (t < T[1]) { const u=ease(seg(t,T[0],T[1])); open = 1-u; lift = LIFT*(1-u); step=1; }
+    else if (t < T[2]) { open=0; alpha = 325*ease(seg(t,T[1],T[2])); step=2; }
+    else if (t < T[3]) { open = ease(seg(t,T[2],T[3])); alpha=325; step=3; }
+    else if (t < T[4]) { const u=seg(t,T[3],T[4]); alpha = 325+35*ease(u); lift = 5*RAD*Math.sin(Math.PI*u); step=4; }
+    else { alpha=360; step=5; const u=seg(t,T[5],T[6]); op = 1-u; lift = LIFT*ease(u); }
+    spinG.rotation.x = (14 - P.clamp_rest_deg + alpha)*RAD;
+    if (clampHinge) clampHinge.rotation.y = OPEN*open;
+    armHinges.forEach(h => h.rotation.x = lift);
+    setLabel(t < T[0] ? -70 + (RL*LEAD0 + 70)*slide : RL*(LEAD0 + alpha*RAD));
+    lmat.opacity = .85*op;
+    if (step !== lastStep) { stepEl.textContent = STEPS[step]; lastStep = step; }
+  }
 
   const target = new THREE.Vector3(35, 85, 5);  // three coords of the model centre
   const HOME = {th:2.45, ph:1.05, r:540};
@@ -191,16 +240,18 @@ DATA.parts.filter(p=>p.printed).forEach(p=>{
   ["pointerup","pointercancel"].forEach(t=>canvas.addEventListener(t, e=>{ pts.delete(e.pointerId); pinch=0; }));
   canvas.addEventListener("wheel", e=>{ e.preventDefault(); o.r = Math.max(220, Math.min(1400, o.r*(e.deltaY>0?1.08:0.93))); }, {passive:false});
 
-  const explode = document.getElementById("explode"), refs = document.getElementById("refs"), spinBtn = document.getElementById("spin");
+  const explode = document.getElementById("explode"), refs = document.getElementById("refs"), playBtn = document.getElementById("spin");
   const hidden = new Set();
   function apply(){ const k=+explode.value;
     for (const n in meshes){ const {holder}=meshes[n]; const e = EXPL[n] || (n.startsWith("clamp") ? [0,70,25] : [0,0,0]);
       holder.position.set(e[0]*k, e[1]*k, e[2]*k);
-      holder.visible = !hidden.has(n) && (refs.checked || !n.startsWith("ref_") || n==="ref_bolt"); } }
+      holder.visible = !hidden.has(n) && (refs.checked || !n.startsWith("ref_") || n==="ref_bolt"); }
+    label.visible = refs.checked && k < 0.02; }
   explode.addEventListener("input", apply); refs.addEventListener("change", apply);
   document.getElementById("reset").addEventListener("click", ()=>{ o={...HOME}; });
-  let spinning = false;
-  spinBtn.addEventListener("click", ()=>{ spinning=!spinning; spinBtn.setAttribute("aria-pressed", spinning); spinBtn.textContent = spinning ? "وقّف الدوران" : "دوّر العبوة"; });
+  let playing = !matchMedia("(prefers-reduced-motion: reduce)").matches, clock = 3.5, last = performance.now();
+  function syncBtn(){ playBtn.setAttribute("aria-pressed", playing); playBtn.textContent = playing ? "وقّف العرض" : "شغّل العرض"; }
+  playBtn.addEventListener("click", ()=>{ playing=!playing; syncBtn(); }); syncBtn();
 
   const legend = document.getElementById("legend");
   DATA.parts.filter(p=>p.printed).forEach(p=>{
@@ -211,6 +262,9 @@ DATA.parts.filter(p=>p.printed).forEach(p=>{
     legend.appendChild(b);
   });
   apply();
-  (function tick(){ if (spinning) spinG.rotation.x -= 0.02; place(); renderer.render(scene, cam); requestAnimationFrame(tick); })();
+  window.__seek = s => { clock = s; playing = false; syncBtn(); };
+  (function tick(now){ const dt = Math.min(.1, ((now||last)-last)/1000); last = now||last;
+    if (playing) clock = (clock + dt) % T[6];
+    pose(clock); place(); renderer.render(scene, cam); requestAnimationFrame(tick); })();
 })();
 </script>
