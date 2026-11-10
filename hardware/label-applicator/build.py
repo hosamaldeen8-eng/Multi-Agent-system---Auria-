@@ -4,8 +4,9 @@ The jar screws into its own lid, which is held in a rotating cup (the same
 idea as the square-and-lid hand jig, but fixed to a base).
 
 * A clamp bar hinged on the rotating cup lies along the jar, parallel to its
-  axis. It pins the leading edge of the label to the jar and is the straight
-  edge the label is squared against, so it turns with the jar.
+  axis. It pins the leading edge of the label to the jar. A lip and a side wing
+  under it form a square corner the label is pushed into, so it cannot start
+  skewed or shifted along the jar. The clamp turns with the jar.
 * A fixed arm hinged on two posts reaches over the jar and rests a rubber
   squeegee blade on its top. As the jar turns, the blade presses the label
   down and pushes the air out ahead of it.
@@ -31,6 +32,7 @@ ap.add_argument("--jar-d", type=float, default=85.0, help="jar body diameter")
 ap.add_argument("--jar-len", type=float, default=115.0, help="jar length incl. lid")
 ap.add_argument("--lid-d", type=float, default=88.0, help="lid outer diameter")
 ap.add_argument("--lid-h", type=float, default=30.0, help="lid height")
+ap.add_argument("--label-x0", type=float, default=None, help="where the label's side edge sits (default: 4 mm past the lid)")
 ap.add_argument("--label-len", type=float, default=220.0, help="label length around the jar")
 ap.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "out"))
 A = ap.parse_args()
@@ -48,6 +50,8 @@ PAD = 1.5                          # foam pad under the clamp foot
 
 # ---- derived from the jar --------------------------------------------------
 jar_r = A.jar_d / 2
+LBL_X0 = A.label_x0 if A.label_x0 is not None else A.lid_h + 4
+LIP_Y = -5.5                       # face the label's leading edge butts against
 ad_r = A.lid_d / 2 + 4             # outer radius of the lid cup
 assert 27 <= jar_r <= 55, "jar diameter outside what the squeegee arm reaches (54-110 mm)"
 assert A.jar_len <= 125, "jar too long for this base"
@@ -125,7 +129,13 @@ def make_adapter():
 def make_clamp():
     x_end = A.jar_len - 5
     c = box(-10, x_end, -4.6, 4.6, C_BEAM_Z0, C_BEAM_Z1)                       # beam + thumb tail
-    c = c.union(box(A.lid_h + 4, x_end, -7, 7, AX_H + jar_r + PAD, C_BEAM_Z0))  # foot = straight edge
+    c = c.union(box(LBL_X0, x_end, -7, 7, AX_H + jar_r + PAD, C_BEAM_Z0))       # foot, foam pad underneath
+    # registration corner, like a try-square: the label's leading edge butts
+    # against the back lip (parallel to the jar axis) and its side edge against
+    # the side wing, so it cannot start skewed or shifted along the jar
+    c = c.union(box(LBL_X0 - 1.5, x_end, -7, LIP_Y, AX_H + jar_r + 0.3, AX_H + jar_r + PAD))
+    c = c.union(box(LBL_X0 - 1.5, LBL_X0, -7, 30, AX_H + jar_r + 0.3, AX_H + jar_r + 6))
+    c = c.union(box(LBL_X0 - 1.5, LBL_X0 + 6, -7, 7, AX_H + jar_r + 6, C_BEAM_Z0))
     c = c.union(cyl_z(4, C_BEAM_Z0 - 2, C_BEAM_Z0, -6, 0))                      # spring peg under tail
     c = c.cut(cyl_y(3.2, -10, 10, x=5, z=C_PIN_Z))
     return about_spindle(c, CLAMP_REST_DEG)
@@ -212,7 +222,8 @@ print("clashes:", clashes or "none")
 for f in os.listdir(A.out):
     os.remove(os.path.join(A.out, f))
 asm = cq.Assembly(name="label_applicator")
-viewer = {"params": vars(A) | {"axis_h": AX_H, "clamp_rest_deg": CLAMP_REST_DEG, "clamp_pin": [5, ad_r + 6],
+viewer = {"params": vars(A) | {"axis_h": AX_H, "clamp_rest_deg": CLAMP_REST_DEG, "clamp_pin": [5, ad_r + 6], "label_x0": LBL_X0,
+                               "lead_deg": math.degrees(math.asin(-LIP_Y / jar_r)),
                                "arm_pivot": [ARM_PIVOT_Y, ARM_PIVOT_Z],
                                "label_len": min(A.label_len, 0.85 * math.pi * A.jar_d)}, "parts": []}
 for name, (shape, colour, is_printed, label) in PARTS.items():
