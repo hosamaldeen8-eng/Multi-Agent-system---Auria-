@@ -151,12 +151,14 @@ def make_ruler():
 
 
 def make_crank():
-    c = cyl_x(24, -57, -45)
-    c = c.union(box(-57, -49, -10, 10, AX_H - 60, AX_H))
-    c = c.union(cyl_x(20, -57, -49, z=AX_H - 60))
-    c = c.union(cyl_x(16, -97, -57, z=AX_H - 60))
-    c = c.cut(cyl_x(8.4, -58, -44))
-    c = c.cut(hex_x(13.4, -58, -51.5))
+    # sits 8.5 mm behind the headstock: room for a washer and the first M8 nut
+    x0, x1 = -61.5, -49.5
+    c = cyl_x(24, x0, x1)
+    c = c.union(box(x0, x0 + 8, -10, 10, AX_H - 60, AX_H))
+    c = c.union(cyl_x(20, x0, x0 + 8, z=AX_H - 60))
+    c = c.union(cyl_x(16, x0 - 40, x0, z=AX_H - 60))
+    c = c.cut(cyl_x(8.4, x0 - 1, x1 + 1))
+    c = c.cut(hex_x(13.4, x0 - 1, x0 + 6.5))        # second nut locks the crank
     return c
 
 
@@ -199,7 +201,7 @@ PARTS = {
     "ref_blade": (ref_blade(), "#2b2f33", False, "القومة"),
     "ref_lid": (cyl_x(A.lid_d, 0.3, A.lid_h), "#d8b04a", False, "غطاء العبوة"),
     "ref_jar": (cyl_x(A.jar_d, A.lid_h, A.jar_len), "#2e5e45", False, "العبوة"),
-    "ref_bolt": (cyl_x(8, -68, -0.5), "#b9bec4", False, "برغي M8"),
+    "ref_bolt": (cyl_x(8, -65.5, -5.8), "#b9bec4", False, "برغي M8"),
 }
 
 os.makedirs(A.out, exist_ok=True)
