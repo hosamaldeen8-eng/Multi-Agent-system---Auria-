@@ -3,10 +3,11 @@
 The jar screws into its own lid, which is held in a rotating cup (the same
 idea as the square-and-lid hand jig, but fixed to a base).
 
-* A clamp bar hinged on the rotating cup lies along the jar, parallel to its
-  axis. It pins the leading edge of the label to the jar. A lip and a side wing
-  under it form a square corner the label is pushed into, so it cannot start
-  skewed or shifted along the jar. The clamp turns with the jar.
+* A ruler seats on a tapered rail on the rotating cup and lies along the jar,
+  parallel to its axis, with a side stop square to it. The label's leading
+  edge and side edge are pushed into that corner, so it cannot start skewed
+  or shifted. The ruler turns with the jar and lifts off before the end of a
+  full-wrap label comes round to meet the start.
 * A fixed arm hinged on two posts reaches over the jar and rests a rubber
   squeegee blade on its top. As the jar turns, the blade presses the label
   down and pushes the air out ahead of it.
@@ -33,7 +34,7 @@ ap.add_argument("--jar-len", type=float, default=115.0, help="jar length incl. l
 ap.add_argument("--lid-d", type=float, default=88.0, help="lid outer diameter")
 ap.add_argument("--lid-h", type=float, default=30.0, help="lid height")
 ap.add_argument("--label-x0", type=float, default=None, help="where the label's side edge sits (default: 4 mm past the lid)")
-ap.add_argument("--label-len", type=float, default=220.0, help="label length around the jar")
+ap.add_argument("--label-len", type=float, default=None, help="label length around the jar (default: full wrap)")
 ap.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "out"))
 A = ap.parse_args()
 
@@ -44,18 +45,16 @@ BEARING_D, BEARING_W = 22.0, 7.0   # 608 bearing
 FIT = 0.2                          # print clearance
 REF_JAR_R = 42.5                   # jar the squeegee arm sits level on
 ARM_PIVOT_Y = -80.0
-ARM_PIVOT_Z = AX_H + 67
-CLAMP_REST_DEG = -70               # where the clamp sits in the drawing
-PAD = 1.5                          # foam pad under the clamp foot
+ARM_PIVOT_Z = AX_H + 72
+RULER_REST_DEG = -70               # where the ruler sits in the drawing
 
 # ---- derived from the jar --------------------------------------------------
 jar_r = A.jar_d / 2
 LBL_X0 = A.label_x0 if A.label_x0 is not None else A.lid_h + 4
-LIP_Y = -5.5                       # face the label's leading edge butts against
 ad_r = A.lid_d / 2 + 4             # outer radius of the lid cup
 assert 27 <= jar_r <= 55, "jar diameter outside what the squeegee arm reaches (54-110 mm)"
 assert A.jar_len <= 125, "jar too long for this base"
-assert ad_r + 3 > jar_r + PAD, "lid much smaller than the jar: clamp needs a redesign"
+assert ad_r + 3 > jar_r, "lid much smaller than the jar: ruler needs a redesign"
 
 
 def box(x0, x1, y0, y1, z0, z1):
@@ -108,16 +107,28 @@ def make_headstock():
     return h
 
 
-# Clamp geometry is drawn with the clamp at 12 o'clock, then turned to rest.
-C_BEAM_Z0, C_BEAM_Z1 = AX_H + ad_r + 3, AX_H + ad_r + 9
-C_PIN_Z = AX_H + ad_r + 6
+# The ruler is drawn at 12 o'clock (reference face in the plane y = 0, label on
+# the +y side), then turned to its rest angle. It seats on a tapered rail that
+# is part of the lid cup, so it is rigid and square to the jar when pushed
+# down, and lifts straight off before the end of the label comes round.
+RAIL_Z0, RAIL_Z1 = AX_H + ad_r - 1, AX_H + ad_r + 7
+RAIL_X1 = LBL_X0 - 1.5
+RULER_TOP = AX_H + ad_r + 11
+
+
+def rail_profile(z1):
+    return (cq.Workplane("YZ").polyline([(-16, RAIL_Z0), (-4, RAIL_Z0), (-6, z1), (-14, z1)]).close().extrude(RAIL_X1))
+
+
+def sector(r0, r1, x0, x1, y0, y1):
+    ring = cyl_x(2 * r1, x0, x1).cut(cyl_x(2 * r0, x0 - 1, x1 + 1))
+    return ring.intersect(box(x0, x1, y0, y1, AX_H + 15, AX_H + 90))
 
 
 def make_adapter():
     a = cyl_x(2 * ad_r, -9, 10).union(cyl_x(14, -11, -9))
-    ears = box(0, 10, -9, -5, AX_H + ad_r - 2, C_PIN_Z + 6).union(box(0, 10, 5, 9, AX_H + ad_r - 2, C_PIN_Z + 6))
-    ears = ears.cut(cyl_y(3.2, -10, 10, x=5, z=C_PIN_Z))
-    a = a.union(about_spindle(ears, CLAMP_REST_DEG))
+    rail = rail_profile(RAIL_Z1).cut(cyl_z(3.4, RAIL_Z0, RAIL_Z1 + 1, 20, -10))   # thumb-screw pilot
+    a = a.union(about_spindle(rail, RULER_REST_DEG))
     a = a.cut(cyl_x(A.lid_d + 0.6, 0, 11))          # pocket the lid sits in
     a = a.cut(cyl_x(8.4, -12, 1))                   # M8 spindle bolt
     a = a.cut(hex_x(13.4, -5.8, 1))                 # captive bolt head
@@ -126,19 +137,17 @@ def make_adapter():
     return a
 
 
-def make_clamp():
+def make_ruler():
     x_end = A.jar_len - 5
-    c = box(-10, x_end, -4.6, 4.6, C_BEAM_Z0, C_BEAM_Z1)                       # beam + thumb tail
-    c = c.union(box(LBL_X0, x_end, -7, 7, AX_H + jar_r + PAD, C_BEAM_Z0))       # foot, foam pad underneath
-    # registration corner, like a try-square: the label's leading edge butts
-    # against the back lip (parallel to the jar axis) and its side edge against
-    # the side wing, so it cannot start skewed or shifted along the jar
-    c = c.union(box(LBL_X0 - 1.5, x_end, -7, LIP_Y, AX_H + jar_r + 0.3, AX_H + jar_r + PAD))
-    c = c.union(box(LBL_X0 - 1.5, LBL_X0, -7, 30, AX_H + jar_r + 0.3, AX_H + jar_r + 6))
-    c = c.union(box(LBL_X0 - 1.5, LBL_X0 + 6, -7, 7, AX_H + jar_r + 6, C_BEAM_Z0))
-    c = c.union(cyl_z(4, C_BEAM_Z0 - 2, C_BEAM_Z0, -6, 0))                      # spring peg under tail
-    c = c.cut(cyl_y(3.2, -10, 10, x=5, z=C_PIN_Z))
-    return about_spindle(c, CLAMP_REST_DEG)
+    g = jar_r + 0.3                                  # ruler floats just clear of the jar
+    r = box(0, RAIL_X1, -20, 0, AX_H + ad_r + 0.5, RULER_TOP)                   # saddle on the rail
+    r = r.cut(rail_profile(RAIL_Z1 + 0.6))
+    r = r.cut(cyl_z(4.4, RAIL_Z1, RULER_TOP + 1, 20, -10))
+    r = r.union(sector(g, ad_r + 11, RAIL_X1, LBL_X0, -20, 0))                  # web
+    r = r.union(sector(g, jar_r + 5, LBL_X0, x_end, -20, 0))                    # straight edge
+    r = r.union(sector(g, ad_r + 11, LBL_X0, x_end, -20, -12))                  # stiffening spine
+    r = r.union(sector(g, jar_r + 6, RAIL_X1, LBL_X0, 0, 30))                   # side stop
+    return about_spindle(r, RULER_REST_DEG)
 
 
 def make_crank():
@@ -153,7 +162,7 @@ def make_crank():
 
 # Squeegee arm, drawn level for the reference jar and tilted for other sizes.
 H_Z0 = ARM_PIVOT_Z - 8             # underside of the blade holder
-BLADE_X0, BLADE_X1 = A.lid_h + 4, min(A.jar_len - 3, 116)
+BLADE_X0, BLADE_X1 = LBL_X0 + 1, min(A.jar_len - 3, 116)
 arm_tilt = math.degrees(math.asin((jar_r - REF_JAR_R) / -ARM_PIVOT_Y))
 
 
@@ -183,7 +192,7 @@ PARTS = {
     "base": (make_base(), "#8f9aa3", True, "القاعدة وأعمدة الذراع"),
     "headstock": (make_headstock(), "#5d7fa3", True, "حامل المحور"),
     f"lid_adapter_{A.name}": (make_adapter(), "#d9892b", True, "كأس الغطاء (يتبدّل حسب المقاس)"),
-    f"clamp_{A.name}": (make_clamp(), "#2f9e8f", True, "مشبك الاستيكر (يلف مع الراس)"),
+    f"ruler_{A.name}": (make_ruler(), "#2f9e8f", True, "المسطرة (تلف مع العبوة)"),
     "crank": (make_crank(), "#c44f3f", True, "المانيفيلا"),
     "squeegee_arm": (make_squeegee_arm(), "#7a68a8", True, "ذراع القومة (ثابت من فوق)"),
     # reference geometry, not printed
@@ -209,8 +218,8 @@ for n, s in printed:
     v = s.intersect(jar_like).val().Volume()
     if v > 0.5:
         clashes.append((n, "jar", round(v, 1)))
-# the cup + clamp sweep a full turn: nothing fixed may sit inside that ring
-rotating = PARTS[f"lid_adapter_{A.name}"][0].union(PARTS[f"clamp_{A.name}"][0])
+# the cup + ruler sweep a full turn: nothing fixed may sit inside that ring
+rotating = PARTS[f"lid_adapter_{A.name}"][0].union(PARTS[f"ruler_{A.name}"][0])
 fixed = PARTS["base"][0].union(PARTS["headstock"][0]).union(PARTS["squeegee_arm"][0])
 for deg in range(0, 360, 10):
     v = about_spindle(rotating, deg).intersect(fixed).val().Volume()
@@ -222,10 +231,9 @@ print("clashes:", clashes or "none")
 for f in os.listdir(A.out):
     os.remove(os.path.join(A.out, f))
 asm = cq.Assembly(name="label_applicator")
-viewer = {"params": vars(A) | {"axis_h": AX_H, "clamp_rest_deg": CLAMP_REST_DEG, "clamp_pin": [5, ad_r + 6], "label_x0": LBL_X0,
-                               "lead_deg": math.degrees(math.asin(-LIP_Y / jar_r)),
+viewer = {"params": vars(A) | {"axis_h": AX_H, "ruler_rest_deg": RULER_REST_DEG, "label_x0": LBL_X0,
                                "arm_pivot": [ARM_PIVOT_Y, ARM_PIVOT_Z],
-                               "label_len": min(A.label_len, 0.85 * math.pi * A.jar_d)}, "parts": []}
+                               "label_len": A.label_len or math.pi * A.jar_d - 1.5}, "parts": []}
 for name, (shape, colour, is_printed, label) in PARTS.items():
     if is_printed:
         cq.exporters.export(shape, os.path.join(A.out, f"{name}.stl"), tolerance=0.05, angularTolerance=0.2)
