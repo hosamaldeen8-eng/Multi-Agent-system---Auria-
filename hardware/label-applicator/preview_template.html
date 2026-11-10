@@ -1,0 +1,218 @@
+<title>مكينة تركيب الاستيكرات</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: workshop sheet. One column, the 3D model first, then how it works, then the two parts lists. */
+:root{
+  --paper:#eef1f3; --panel:#f8fafb; --ink:#1c2730; --muted:#5a6873; --line:#cdd5db;
+  --accent:#b8611a; --stage:#dfe5e9;
+  --text:"IBM Plex Sans Arabic","Segoe UI",Tahoma,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --paper:#141a20; --panel:#1b232b; --ink:#e6ecf0; --muted:#9aa8b3; --line:#2e3943;
+  --accent:#e9954a; --stage:#222c35; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --paper:#141a20; --panel:#1b232b; --ink:#e6ecf0; --muted:#9aa8b3; --line:#2e3943;
+  --accent:#e9954a; --stage:#222c35; color-scheme:dark }
+
+body{background:var(--paper);color:var(--ink);font-family:var(--text);font-size:16px;line-height:1.75}
+.wrap{max-width:920px;margin:0 auto;padding-block:28px 56px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:36px}
+h1{font-size:1.9rem;line-height:1.3;margin:0;text-wrap:balance}
+h2{font-size:1.2rem;margin:0 0 12px;text-wrap:balance}
+p{margin:0;max-width:62ch}
+.lead{color:var(--muted)}
+header{display:flex;flex-direction:column;gap:8px}
+.num{font-family:var(--mono);direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums}
+
+.stage{background:var(--stage);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+#view{display:block;width:100%;height:min(62vh,520px);touch-action:none;cursor:grab}
+#view:active{cursor:grabbing}
+.bar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:12px 14px;border-top:1px solid var(--line);background:var(--panel)}
+.bar label{display:flex;align-items:center;gap:8px;font-size:.92rem}
+.bar input[type=range]{width:140px;max-width:40vw}
+button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:5px 12px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#spin[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--paper)}
+.legend{display:flex;flex-wrap:wrap;gap:8px;padding:12px 14px;border-top:1px solid var(--line);background:var(--panel)}
+.legend button{display:flex;align-items:center;gap:8px;font-size:.88rem;padding:3px 10px}
+.legend button[aria-pressed=false]{opacity:.45;text-decoration:line-through}
+.chip{width:12px;height:12px;border-radius:2px;border:1px solid var(--line);flex:none}
+.hint{font-size:.85rem;color:var(--muted);padding:8px 14px 0}
+
+ol{margin:0;padding-inline-start:1.4em;display:flex;flex-direction:column;gap:8px;max-width:64ch}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.94rem}
+th,td{text-align:start;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:500;font-size:.85rem}
+.note{border-inline-start:3px solid var(--accent);padding-inline-start:14px;display:flex;flex-direction:column;gap:8px}
+.err{padding:24px;color:var(--muted)}
+</style>
+
+<div class="wrap" dir="rtl" lang="ar">
+  <header>
+    <h1>مكينة تركيب الاستيكرات على العبوة</h1>
+    <p class="lead">نفس فكرة الزاوية والغطاء، لكن مثبتة على قاعدة: العبوة تتربّط في غطاها وتدور بمانيفيلا، والاستيكر يدخل من طاولة فيها حافة دليل، فيتلف مستقيم كل مرة.</p>
+  </header>
+
+  <section>
+    <div class="stage">
+      <canvas id="view" aria-label="مجسم ثلاثي الأبعاد للمكينة"></canvas>
+      <p class="hint">اسحب باش تدوّر المجسم، وقرّب بالعجلة أو بإصبعين.</p>
+      <div class="bar">
+        <button id="spin" type="button" aria-pressed="false">دوّر العبوة</button>
+        <label for="explode">فكّ القطع <input id="explode" type="range" min="0" max="1" step="0.01" value="0"></label>
+        <label for="refs"><input id="refs" type="checkbox" checked> العبوة والاستيكر</label>
+        <button id="reset" type="button">رجّع الزاوية</button>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>كيف تخدم</h2>
+    <ol>
+      <li>ربّط العبوة في الغطاء المثبّت في الكأس البرتقالي. الغطاء هو اللي يضمن إن العبوة في المركز ومحورها مستقيم.</li>
+      <li>حط الاستيكر على الطاولة ووجه اللصق لفوق، وحافته الجانبية لاصقة في حافة الدليل الخضراء.</li>
+      <li>ادفع طرف الاستيكر لين يدخل بين العبوة ورول الضغط الأسود.</li>
+      <li>دوّر المانيفيلا. العبوة تسحب الاستيكر والرول يكبسه ويطرد الفقاعات.</li>
+      <li>فك العبوة من الغطاء وركّب اللي بعدها. حافة الدليل تبقى في مكانها، فكل العبوات يطلعن زي بعض.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>القطع اللي تنطبع</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>القطعة</th><th>المقاس (مم)</th><th>ملاحظة</th></tr></thead>
+      <tbody id="printed"></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>القطع اللي تشريها</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>القطعة</th><th>العدد</th><th>وين تتركّب</th></tr></thead>
+      <tbody>
+        <tr><td>رولمان بلي <span class="num">608</span> (<span class="num">8×22×7</span>)</td><td class="num">2</td><td>في حامل المحور، واحد من كل جهة</td></tr>
+        <tr><td>برغي <span class="num">M8×70</span> بصامولتين وورد</td><td class="num">1</td><td>المحور: راسه في الكأس وطرفه في المانيفيلا</td></tr>
+        <tr><td>قضيب مسنن <span class="num">M5</span> بطول <span class="num">110</span> مع صواميل</td><td class="num">2</td><td>مفصل الذراع، ومحور رول الضغط</td></tr>
+        <tr><td>براغي <span class="num">M4×16</span> بصواميل</td><td class="num">4</td><td>تثبيت حامل المحور في القاعدة</td></tr>
+        <tr><td>براغي <span class="num">M4×20</span> بصواميل جناح</td><td class="num">2</td><td>تعديل ارتفاع الطاولة</td></tr>
+        <tr><td>براغي <span class="num">M4×12</span> بصواميل</td><td class="num">2</td><td>تثبيت حافة الدليل</td></tr>
+        <tr><td>زنبرك ضغط، قطره الداخلي <span class="num">8</span> وطوله حوالي <span class="num">30</span></td><td class="num">1</td><td>تحت ذراع الرول</td></tr>
+        <tr><td>خرطوم سيليكون أو إسفنج طري</td><td class="num">1</td><td>يتلبّس على رول الضغط</td></tr>
+        <tr><td>براغي صغار <span class="num">3</span> مم</td><td class="num">2</td><td>تثبيت الغطاء في الكأس</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="note">
+    <h2>قبل ما تطبع</h2>
+    <p>المقاسات مقدّرة من الصور: قطر العبوة <span class="num" id="p-jar"></span> مم وقطر الغطاء <span class="num" id="p-lid"></span> مم. قيسهم بالقدمة وعطيني الأرقام، خاصة قطر الغطاء، لأن الكأس لازم يشدّه بلا لعب.</p>
+    <p>المقاس الثاني يبيله كأس غطاء ثاني بس. الطاولة ترتفع وتنزل على الشقوق، وتغطي عبوات بقطر من <span class="num">54</span> لـ <span class="num">110</span> مم.</p>
+    <p>هذي نسخة أولى ما انطبعتش ولا تجرّبت. اطبع الكأس وحامل المحور أول وجرّب دوران العبوة قبل ما تطبع الباقي.</p>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const DATA = __DATA__;
+const NOTES = {
+  base: "تنطبع مسطّحة، فيها أعمدة الطاولة ومفصل الذراع",
+  headstock: "تنطبع واقفة على قاعدتها",
+  crank: "تنطبع والمقبض لفوق",
+  table: "تنطبع مقلوبة، وجهها على السرير باش يطلع أملس",
+  fence: "تتحرك يمين ويسار حسب مكان الاستيكر",
+  roller_arm: "تنطبع على جنبها",
+  roller: "تنطبع واقفة",
+};
+const size = p => { const v = p.v, mn=[1e9,1e9,1e9], mx=[-1e9,-1e9,-1e9];
+  for (let i=0;i<v.length;i+=3) for (let k=0;k<3;k++){ mn[k]=Math.min(mn[k],v[i+k]); mx[k]=Math.max(mx[k],v[i+k]); }
+  return mx.map((m,k)=>Math.round(m-mn[k])); };
+document.getElementById("p-jar").textContent = DATA.params.jar_d;
+document.getElementById("p-lid").textContent = DATA.params.lid_d;
+const tb = document.getElementById("printed");
+DATA.parts.filter(p=>p.printed).forEach(p=>{
+  const tr = document.createElement("tr"), s = size(p);
+  const note = p.name.startsWith("lid_adapter") ? "واحد لكل مقاس غطاء، ينطبع والفتحة لفوق" : (NOTES[p.name]||"");
+  [p.label, s.join(" × "), note].forEach((t,i)=>{ const td=document.createElement("td"); td.textContent=t; if(i===1) td.className="num"; tr.appendChild(td); });
+  tb.appendChild(tr);
+});
+
+(function(){
+  const canvas = document.getElementById("view");
+  if (!window.THREE) { const d=document.createElement("p"); d.className="err"; d.textContent="تعذّر تحميل مكتبة العرض ثلاثي الأبعاد. جرّب تعاود فتح الصفحة."; canvas.replaceWith(d); return; }
+  const AX = DATA.params.axis_h;
+  const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1, 2));
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(32, 1, 10, 5000);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x556070, 0.85));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.75); sun.position.set(-200, 400, 300); scene.add(sun);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.3); fill.position.set(300, 100, -200); scene.add(fill);
+
+  // CAD is Z-up; three is Y-up.
+  const root = new THREE.Group(); root.rotation.x = -Math.PI/2; scene.add(root);
+  const spinG = new THREE.Group(); spinG.position.set(0,0,AX); root.add(spinG);
+  const SPIN = n => n.startsWith("lid_adapter") || ["crank","ref_lid","ref_jar","ref_bolt"].includes(n);
+  const EXPL = { base:[0,0,-40], headstock:[-50,0,0], crank:[-110,0,0], ref_bolt:[-80,0,0], ref_lid:[45,0,0], ref_jar:[110,0,0],
+                 table:[0,70,0], fence:[0,70,45], ref_label:[0,110,70], roller_arm:[0,-70,-10], roller:[0,-70,35] };
+  const meshes = {};
+  DATA.parts.forEach(p=>{
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(p.v, 3));
+    g.setIndex(p.t);
+    const flat = g.toNonIndexed(); flat.computeVertexNormals();
+    const isLabel = p.name==="ref_label";
+    const m = new THREE.Mesh(flat, new THREE.MeshStandardMaterial({color:p.color, roughness:.75, metalness:.05,
+      transparent:isLabel, opacity:isLabel?.6:1, side:THREE.DoubleSide}));
+    const holder = new THREE.Group(); holder.add(m);
+    if (SPIN(p.name)) { m.position.set(0,0,-AX); spinG.add(holder); } else root.add(holder);
+    meshes[p.name] = {holder, part:p};
+  });
+
+  const target = new THREE.Vector3(35, 45, -50);  // three coords of the model centre
+  const HOME = {th:2.5, ph:1.0, r:560};
+  let o = {...HOME};
+  function place(){ const s=Math.sin(o.ph), c=Math.cos(o.ph);
+    cam.position.set(target.x+o.r*s*Math.sin(o.th), target.y+o.r*c, target.z+o.r*s*Math.cos(o.th)); cam.lookAt(target); }
+  function resize(){ const w=canvas.clientWidth, h=canvas.clientHeight; if(!w||!h) return;
+    renderer.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); }
+  new ResizeObserver(resize).observe(canvas); resize();
+
+  const pts = new Map(); let pinch = 0;
+  canvas.addEventListener("pointerdown", e=>{ canvas.setPointerCapture(e.pointerId); pts.set(e.pointerId,[e.clientX,e.clientY]); pinch=0; });
+  canvas.addEventListener("pointermove", e=>{ const prev=pts.get(e.pointerId); if(!prev) return;
+    pts.set(e.pointerId,[e.clientX,e.clientY]);
+    if (pts.size===1){ o.th -= (e.clientX-prev[0])*0.008; o.ph = Math.max(0.15, Math.min(1.5, o.ph-(e.clientY-prev[1])*0.008)); }
+    else if (pts.size===2){ const [a,b]=[...pts.values()], d=Math.hypot(a[0]-b[0],a[1]-b[1]);
+      if (pinch) o.r = Math.max(220, Math.min(1400, o.r*pinch/d)); pinch=d; } });
+  ["pointerup","pointercancel"].forEach(t=>canvas.addEventListener(t, e=>{ pts.delete(e.pointerId); pinch=0; }));
+  canvas.addEventListener("wheel", e=>{ e.preventDefault(); o.r = Math.max(220, Math.min(1400, o.r*(e.deltaY>0?1.08:0.93))); }, {passive:false});
+
+  const explode = document.getElementById("explode"), refs = document.getElementById("refs"), spinBtn = document.getElementById("spin");
+  const hidden = new Set();
+  function apply(){ const k=+explode.value;
+    for (const n in meshes){ const {holder}=meshes[n]; const e = EXPL[n] || (n.startsWith("lid_adapter") ? [0,0,0] : [0,0,0]);
+      holder.position.set(e[0]*k, e[1]*k, e[2]*k);
+      holder.visible = !hidden.has(n) && (refs.checked || !n.startsWith("ref_") || n==="ref_bolt"); } }
+  explode.addEventListener("input", apply); refs.addEventListener("change", apply);
+  document.getElementById("reset").addEventListener("click", ()=>{ o={...HOME}; });
+  let spinning = false;
+  spinBtn.addEventListener("click", ()=>{ spinning=!spinning; spinBtn.setAttribute("aria-pressed", spinning); spinBtn.textContent = spinning ? "وقّف الدوران" : "دوّر العبوة"; });
+
+  const legend = document.getElementById("legend");
+  DATA.parts.filter(p=>p.printed).forEach(p=>{
+    const b=document.createElement("button"); b.type="button"; b.setAttribute("aria-pressed","true");
+    const c=document.createElement("span"); c.className="chip"; c.style.background=p.color;
+    b.append(c, document.createTextNode(p.label));
+    b.addEventListener("click", ()=>{ hidden.has(p.name)?hidden.delete(p.name):hidden.add(p.name); b.setAttribute("aria-pressed", !hidden.has(p.name)); apply(); });
+    legend.appendChild(b);
+  });
+  apply();
+  (function tick(){ if (spinning) spinG.rotation.x -= 0.02; place(); renderer.render(scene, cam); requestAnimationFrame(tick); })();
+})();
+</script>
