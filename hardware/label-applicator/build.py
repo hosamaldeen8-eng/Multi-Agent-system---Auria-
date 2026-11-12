@@ -16,7 +16,7 @@ Axes: X = jar axis (0 at the closed face of the lid), Y = towards the
 operator, Z = up (0 = top of the base plate).
 
 Usage:
-    python build.py                       # default jar (85 x 115, lid 88 x 30)
+    python build.py                       # default jar (98 x 115 estimated, lid 101 x 17 measured)
     python build.py --name B --jar-d 70 --jar-len 100 --lid-d 73 --lid-h 25
 """
 import argparse
@@ -29,10 +29,10 @@ import cadquery as cq
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--name", default="A", help="label for this jar size")
-ap.add_argument("--jar-d", type=float, default=85.0, help="jar body diameter")
-ap.add_argument("--jar-len", type=float, default=115.0, help="jar length incl. lid")
-ap.add_argument("--lid-d", type=float, default=88.0, help="lid outer diameter")
-ap.add_argument("--lid-h", type=float, default=30.0, help="lid height")
+ap.add_argument("--jar-d", type=float, default=98.0, help="jar body diameter (estimate until measured)")
+ap.add_argument("--jar-len", type=float, default=115.0, help="jar length incl. lid (estimate until measured)")
+ap.add_argument("--lid-d", type=float, default=101.0, help="lid outer diameter (measured)")
+ap.add_argument("--lid-h", type=float, default=17.0, help="lid height (measured)")
 ap.add_argument("--label-x0", type=float, default=None, help="where the label's side edge sits (default: 4 mm past the lid)")
 ap.add_argument("--label-len", type=float, default=None, help="label length around the jar (default: full wrap)")
 ap.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "out"))
@@ -43,9 +43,6 @@ AX_H = 100.0        # spindle axis height above the base plate
 BASE_T = 8.0
 BEARING_D, BEARING_W = 22.0, 7.0   # 608 bearing
 FIT = 0.2                          # print clearance
-REF_JAR_R = 42.5                   # jar the squeegee arm sits level on
-ARM_PIVOT_Y = -80.0
-ARM_PIVOT_Z = AX_H + 72
 RULER_REST_DEG = -70               # where the ruler sits in the drawing
 
 # ---- derived from the jar --------------------------------------------------
@@ -53,7 +50,11 @@ jar_r = A.jar_d / 2
 LBL_X0 = A.label_x0 if A.label_x0 is not None else A.lid_h + 4
 ad_r = A.lid_d / 2 + 4             # outer radius of the lid cup
 assert 27 <= jar_r <= 55, "jar diameter outside what the squeegee arm reaches (54-110 mm)"
-assert A.jar_len <= 125, "jar too long for this base"
+# the squeegee arm and its posts are sized from the lid cup so the ruler clears them
+REF_JAR_R = jar_r                  # jar the squeegee arm sits level on
+ARM_PIVOT_Y = -max(80.0, ad_r + 36)
+ARM_PIVOT_Z = AX_H + ad_r + 24
+X_END = max(130.0, A.jar_len + 15)  # far end of the base
 assert ad_r + 3 > jar_r, "lid much smaller than the jar: ruler needs a redesign"
 
 
@@ -82,15 +83,17 @@ def about_spindle(shape, deg):
 
 
 FOOT_HOLES = [(-48, -34), (-48, 34), (-7, -34), (-7, 34)]
-POSTS_X = (14, 123)                # two posts, 7 thick, either side of the arm
+
+
+POSTS_X = (14, X_END - 7)          # two posts, 7 thick, either side of the arm
 
 
 def make_base():
-    b = box(-55, 130, -95, 70, -BASE_T, 0).edges("|Z").fillet(6)
+    b = box(-55, X_END, ARM_PIVOT_Y - 15, 70, -BASE_T, 0).edges("|Z").fillet(6)
     for x0 in POSTS_X:
         b = b.union(box(x0, x0 + 7, ARM_PIVOT_Y - 10, ARM_PIVOT_Y + 10, 0, ARM_PIVOT_Z + 10))
     b = b.union(box(POSTS_X[0], POSTS_X[1] + 7, ARM_PIVOT_Y - 10, ARM_PIVOT_Y - 4, 0, 120))   # back wall
-    b = b.cut(cyl_x(5.2, 0, 135, y=ARM_PIVOT_Y, z=ARM_PIVOT_Z))
+    b = b.cut(cyl_x(5.2, 0, X_END + 5, y=ARM_PIVOT_Y, z=ARM_PIVOT_Z))
     for x, y in FOOT_HOLES:
         b = b.cut(cyl_z(4.4, -BASE_T - 1, 1, x, y))
     return b
@@ -164,7 +167,7 @@ def make_crank():
 
 # Squeegee arm, drawn level for the reference jar and tilted for other sizes.
 H_Z0 = ARM_PIVOT_Z - 8             # underside of the blade holder
-BLADE_X0, BLADE_X1 = LBL_X0 + 1, min(A.jar_len - 3, 116)
+BLADE_X0, BLADE_X1 = LBL_X0 + 1, min(A.jar_len - 3, X_END - 14)
 arm_tilt = math.degrees(math.asin((jar_r - REF_JAR_R) / -ARM_PIVOT_Y))
 
 
@@ -173,15 +176,15 @@ def tilt(shape):
 
 
 def make_squeegee_arm():
-    s = box(22, 122, -8, 8, H_Z0, H_Z0 + 16)                                   # blade holder
-    for x0 in (22, 116):
+    s = box(22, X_END - 8, -8, 8, H_Z0, H_Z0 + 16)                                   # blade holder
+    for x0 in (22, X_END - 14):
         s = s.union(box(x0, x0 + 6, ARM_PIVOT_Y, 0, ARM_PIVOT_Z - 6, ARM_PIVOT_Z + 6))
         s = s.union(cyl_x(16, x0, x0 + 6, y=ARM_PIVOT_Y, z=ARM_PIVOT_Z))
     s = s.union(box(60, 84, 8, 24, H_Z0 + 10, H_Z0 + 16))                      # lift tab
     s = s.cut(box(BLADE_X0 - 1, BLADE_X1 + 1, -1.7, 1.7, H_Z0 - 1, H_Z0 + 12))  # blade slot
     for x in (BLADE_X0 + 12, BLADE_X1 - 12):                                   # blade clamp screws
         s = s.cut(cyl_y(3.2, -9, 9, x=x, z=H_Z0 + 6))
-    s = s.cut(cyl_x(5.2, 0, 135, y=ARM_PIVOT_Y, z=ARM_PIVOT_Z))
+    s = s.cut(cyl_x(5.2, 0, X_END + 5, y=ARM_PIVOT_Y, z=ARM_PIVOT_Z))
     return tilt(s)
 
 
@@ -234,7 +237,7 @@ for f in os.listdir(A.out):
     os.remove(os.path.join(A.out, f))
 asm = cq.Assembly(name="label_applicator")
 viewer = {"params": vars(A) | {"axis_h": AX_H, "ruler_rest_deg": RULER_REST_DEG, "label_x0": LBL_X0,
-                               "arm_pivot": [ARM_PIVOT_Y, ARM_PIVOT_Z],
+                               "arm_pivot": [ARM_PIVOT_Y, ARM_PIVOT_Z], "base_h": ARM_PIVOT_Z + 10 + BASE_T,
                                "label_len": A.label_len or math.pi * A.jar_d - 1.5}, "parts": []}
 for name, (shape, colour, is_printed, label) in PARTS.items():
     if is_printed:

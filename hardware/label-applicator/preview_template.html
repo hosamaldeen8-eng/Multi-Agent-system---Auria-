@@ -113,9 +113,9 @@ th{color:var(--muted);font-weight:500;font-size:.85rem}
 
   <section class="note">
     <h2>قبل ما تطبع</h2>
-    <p>المقاسات مقدّرة من الصور: قطر العبوة <span class="num" id="p-jar"></span> مم وقطر الغطاء <span class="num" id="p-lid"></span> مم. قيسهم بالقدمة وعطيني الأرقام، خاصة قطر الغطاء، لأن الكأس لازم يشدّه بلا لعب.</p>
+    <p>الغطاء مقاس: قطره <span class="num" id="p-lid"></span> مم وسمكه <span class="num" id="p-lidh"></span> مم. قطر العبوة (<span class="num" id="p-jar"></span> مم) وطولها (<span class="num" id="p-len"></span> مم) مازالوا تقدير، والمسطرة وذراع القومة مبنيين عليهم. قيسهم وعطيني الأرقام قبل ما تطبع هذين القطعتين.</p>
     <p>المقاس الثاني يبيله كأس غطاء ومسطرة ثانيين بس. ذراع القومة على مفصل، فينزل ويرتفع بروحه على عبوات بقطر من <span class="num">54</span> لـ <span class="num">110</span> مم.</p>
-    <p>القاعدة بأعمدتها ارتفاعها <span class="num">190</span> مم. لو طابعتك أقصر من هكي نفصل الأعمدة قطعة بروحها.</p>
+    <p>القاعدة بأعمدتها ارتفاعها <span class="num" id="p-h"></span> مم. لو طابعتك أقصر من هكي نفصل الأعمدة قطعة بروحها.</p>
     <p>المسطرة لازم تترفع قبل آخر اللفة، لأن استيكرك يلف العبوة كلها وآخره ينزل في نفس المكان اللي قاعدة فيه المسطرة. وباش يجي «جيها بجيها» لازم زيادة إن الاستيكر نفسه مقصوص قايم، وإن العبوة جدارها مستقيم مش مخروطي.</p>
     <p>هذي نسخة أولى ما انطبعتش ولا تجرّبت. اطبع الكأس وحامل المحور أول وجرّب دوران العبوة قبل ما تطبع الباقي.</p>
   </section>
@@ -135,6 +135,9 @@ const size = p => { const v = p.v, mn=[1e9,1e9,1e9], mx=[-1e9,-1e9,-1e9];
   return mx.map((m,k)=>Math.round(m-mn[k])); };
 document.getElementById("p-jar").textContent = DATA.params.jar_d;
 document.getElementById("p-lid").textContent = DATA.params.lid_d;
+document.getElementById("p-lidh").textContent = DATA.params.lid_h;
+document.getElementById("p-len").textContent = DATA.params.jar_len;
+document.getElementById("p-h").textContent = Math.round(DATA.params.base_h);
 const tb = document.getElementById("printed");
 DATA.parts.filter(p=>p.printed).forEach(p=>{
   const tr = document.createElement("tr"), s = size(p);
