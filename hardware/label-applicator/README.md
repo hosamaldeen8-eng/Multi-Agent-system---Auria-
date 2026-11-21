@@ -18,3 +18,9 @@ lifts off before the end of a full-wrap label comes round.
 
 Dimensions of jar A were estimated from photos and the design has not been
 printed or tested yet.
+
+## Simple wooden version
+
+`simple/build_simple.py` models a no-printer build: boards, an M8 threaded
+rod, the jar's lid and an ordinary try-square clamped to it. It writes
+`simple/preview.html` with the cut list and shopping list.
