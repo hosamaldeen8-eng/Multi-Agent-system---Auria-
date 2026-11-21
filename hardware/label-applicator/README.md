@@ -21,6 +21,9 @@ printed or tested yet.
 
 ## Simple wooden version
 
-`simple/build_simple.py` models a no-printer build: boards, an M8 threaded
-rod, the jar's lid and an ordinary try-square clamped to it. It writes
-`simple/preview.html` with the cut list and shopping list.
+`simple/build_simple.py` models a no-printer build for closed jars: the jar
+goes in with its lid on, held between a wooden head with a stepped socket (fits
+both the 101 mm and the 90 mm lid) and a sprung tail pad. An aluminium flat bar
+on the head is the ruler, and a hinged arm carries the squeegee rubber. The
+script checks both jar sizes and writes `simple/preview.html` with the cut
+list and shopping list (`--size small` draws the small jar).
